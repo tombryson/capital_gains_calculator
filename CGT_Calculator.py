@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import csv
 
 def parse_data(file_path):
@@ -12,7 +12,7 @@ def parse_data(file_path):
     for trade in trades:
         date, _, _, stock, direction, units, price, currency, total, fee1, fee2, net_total, _, _, _, _, _, _ = trade
         units = abs(int(units))
-        price = abs(float(price))
+        price = abs(float(price)) / 100
         net_total = abs(float(net_total))
         
         if stock not in stock_data:
@@ -35,9 +35,16 @@ def calculate_gains(stock_data):
             stock_discount = 0
             print(f"\nStock: {stock}")
             
+            # Separate buy and sell transactions
             transactions_sorted = sorted(transactions, key=lambda x: datetime.strptime(x[0], "%d-%m-%Y"))
-
-            for transaction in transactions_sorted:
+            sell_transactions = [t for t in transactions_sorted if t[1] == 'SELL']
+            buy_transactions = [t for t in transactions_sorted if t[1] == 'BUY']
+            
+            # Process sell transactions within the last 12 months
+            sell_transactions_filtered = [t for t in sell_transactions if (datetime.now() - datetime.strptime(t[0], "%d-%m-%Y")).days <= 365]
+            
+            # Process buy transactions followed by filtered sell transactions
+            for transaction in buy_transactions + sell_transactions_filtered:
                 date_str, direction, units, price, net_total = transaction
                 date = datetime.strptime(date_str, "%d-%m-%Y")
                 print(f"{date_str} - {direction} {units} units at {price}, for {net_total} total.")
@@ -66,6 +73,7 @@ def calculate_gains(stock_data):
                             buy_list[0] = (purchase_date, purchase_units - shares_sold, purchase_price)
             
             print(f"Total gain for {stock}: {stock_gain}, Total discount for {stock}: {stock_discount}")
+    
     print(f"\nOverall Total gain: {total_gain}, Overall Total discount: {total_discount}")
 
 def main(file_path):
